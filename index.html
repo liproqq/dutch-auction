@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.0/jquery.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+      body{
+        margin-top:30px;
+      }
+
+      #messageArea{
+        display:none;
+      }
+      .flex-container{
+        display: flex;
+        flex-wrap: wrap;
+        width: 800px;
+        max-width: 800px;
+        margin: auto;
+      }
+      .button{
+        margin: 5px;
+        min-width: 100px;
+        min-height: 80px;
+      }
+      #bid{
+        margin:100px;
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+      }
+    </style>
+    <title>Dutch Auction</title>
+  </head>
+  <body>
+    <div class="container">
+      <div class="row" id="userFormArea">
+        <div class="col-md-12">
+          <form id="userForm">
+            <div class="form-group">
+              <label>Enter Username</label>
+              <input class="form-control" id="username" /> <br>
+              <input type="submit"  class="btn btn-primary" value="Login">
+            </div>
+          </form>
+        </div>
+
+      </div>
+
+      <div class="row" id="messageArea">
+        <!-- Chat component
+        <div class="col-md-4">
+            <div class="well">
+              <h3>Online Users</h3>
+              <ul class="list-group" id="users"></ul>
+            </div>
+        </div>
+        <div class="col-md-8">
+          <div class="chat" id="chat"></div>
+
+          <form id="messageForm">
+            <div class="form-group">
+              <label>Enter Message</label>
+              <textarea class="form-control" id="message"></textarea> <br>
+              <input type="submit"  class="btn btn-primary" value="Send Message">
+            </div>
+          </form>
+        </div>
+
+      </div>
+      Chat component end-->
+      <form>
+        <button type="button" id="reset">RESET COUNTER</button>
+      </form>
+
+      <div id="bid">
+
+      </div>
+
+      <div id="buttonsArea" class="row flex-container">
+      </div>
+      <ol id="signings">
+
+      </ol>
+      <script>
+
+
+
+
+        $(function(){
+          var socket = io.connect();
+          var $messageForm = $("#messageForm");
+          var $message = $("#message");
+          var $chat = $("#chat");
+          var $messageArea = $("#messageArea");
+          var $userFormArea = $("#userFormArea");
+          var $userForm = $("#userForm");
+          var $users = $("#users");
+          var $username = $("#username");
+
+
+          var $buttonsArea = $("#buttonsArea");
+
+          socket.on("get items", (items) => {
+            for(var i = 0; i<items.length;i++){
+              $buttonsArea.append(
+                "<button class='button' id="+items[i]+">"+items[i]+"</button>"
+              );
+
+            }
+            $(".button").click( (e) => {
+              console.log(e.target.id+" clicked")
+              socket.emit("remove", e.target.id)
+            });
+          })
+
+          socket.emit("init", () => {
+
+          });
+
+          $("#reset").click( () => {
+              socket.emit("reset")
+          });
+
+          $messageForm.submit((e) => {
+            e.preventDefault();
+            socket.emit("send message", $message.val());
+            $message.val("Message sent");
+          });
+
+          socket.on("new message", (data) => {
+            $chat.append("<div class='well'><strong>"+data.user+"</strong> "+data.msg+"</div>");
+          })
+
+          $userForm.submit((e) => {
+            e.preventDefault();
+            socket.emit("new user", $username.val(), (data) => {
+              if(data){ $userFormArea.hide();
+                        $messageArea.show();
+                      }
+            });
+            $username.val("");
+          });
+
+          socket.on("get users", (data) => {
+            var html ="";
+            for(var i =0; i< data.length;i++){
+              html += "<li class='list-group-item'>"+data[i]+"</li>";
+            }
+            $users.html(html);
+          })
+
+          socket.on("bid", (bid) => {
+            $("#bid").html("$"+bid)
+          })
+
+          socket.on("drop", (data) => {
+            console.log("received "+data.item+" on frontend");
+            $("#"+data.item).remove();
+            $("#signings").append("<li>"+data.item+" were bought by "+data.user+" for "+$("#bid").text())
+          })
+
+        });
+      </script>
+
+  </body>
+</html>
